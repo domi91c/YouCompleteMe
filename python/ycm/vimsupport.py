@@ -125,7 +125,10 @@ def GetUnsavedAndCurrentBufferData():
 
     buffers_data[ GetBufferFilepath( buffer_object ) ] = {
       # Add a newline to match what gets saved to disk. See #1455 for details.
-      'contents': '\n'.join( ToUnicode( x ) for x in buffer_object ) + '\n',
+
+      # TODO: This ToUnicode on each line in the buffer causes big performance
+      # problems
+      'contents': '\n'.join( x for x in buffer_object ) + '\n',
       'filetypes': FiletypesForBuffer( buffer_object )
     }
 
