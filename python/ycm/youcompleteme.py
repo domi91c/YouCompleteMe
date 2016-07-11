@@ -121,6 +121,7 @@ class YouCompleteMe( object ):
     self._complete_done_hooks = {
       'cs': lambda self: self._OnCompleteDone_Csharp()
     }
+    self._ultisnips_snippet_cache = dict() # key = file name
     self._last_buffer_visited = None
     self._last_buffer_parsed = None
     self._profile_buffer_visit = cProfile.Profile()
@@ -771,13 +772,18 @@ class YouCompleteMe( object ):
 
 
   def _AddUltiSnipsDataIfNeeded( self, extra_data ):
-    # See :h UltiSnips#SnippetsInCurrentScope.
-    try:
-      vim.eval( 'UltiSnips#SnippetsInCurrentScope( 1 )' )
-    except vim.error:
-      return
+    file_name = vimsupport.GetCurrentBufferFilepath()
+    if file_name not in self._ultisnips_snippet_cache:
+      # See :h UltiSnips#SnippetsInCurrentScope.
+      try:
+        vim.eval( 'UltiSnips#SnippetsInCurrentScope( 1 )' )
+      except vim.error:
+        return
 
-    snippets = vimsupport.GetVariableValue( 'g:current_ulti_dict_info' )
+      self._ultisnips_snippet_cache = vimsupport.GetVariableValue( 
+          'g:current_ulti_dict_info' )
+
+    snippets = self._ultisnips_snippet_cache[ file_name ]
     extra_data[ 'ultisnips_snippets' ] = [
       { 'trigger': trigger,
         'description': snippet[ 'description' ] }
