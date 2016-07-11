@@ -51,6 +51,7 @@ from ycm.client.event_notification import ( SendEventNotificationAsync,
                                             EventNotification )
 from ycm.client.shutdown_request import SendShutdownRequest
 
+import cProfile, pstats, StringIO
 
 def PatchNoProxy():
   current_value = os.environ.get('no_proxy', '')
@@ -120,6 +121,10 @@ class YouCompleteMe( object ):
     self._complete_done_hooks = {
       'cs': lambda self: self._OnCompleteDone_Csharp()
     }
+    self._profile_buffer_visit = cProfile.Profile()
+    self._profile_buffer_parse = cProfile.Profile()
+    self._profile_create_completion_request = cProfile.Profile()
+    self._profile_get_completions = cProfile.Profile()
 
   def _SetupServer( self ):
     self._available_completers = {}
@@ -216,6 +221,7 @@ class YouCompleteMe( object ):
 
 
   def CreateCompletionRequest( self, force_semantic = False ):
+    self._profile_create_completion_request.enable()
     request_data = BuildRequestData()
     if ( not self.NativeFiletypeCompletionAvailable() and
          self.CurrentFiletypeCompletionEnabled() ):
@@ -231,10 +237,12 @@ class YouCompleteMe( object ):
     if force_semantic:
       request_data[ 'force_semantic' ] = True
     self._latest_completion_request = CompletionRequest( request_data )
+    self._profile_create_completion_request.disable()
     return self._latest_completion_request
 
 
   def GetCompletions( self ):
+    self._profile_get_completions.enable()
     request = self.GetCurrentCompletionRequest()
     request.Start()
     while not request.Done():
@@ -245,6 +253,7 @@ class YouCompleteMe( object ):
         return { 'words' : [], 'refresh' : 'always' }
 
     results = base.AdjustCandidateInsertionText( request.Response() )
+    self._profile_get_completions.disable()
     return { 'words' : results, 'refresh' : 'always' }
 
 
@@ -300,6 +309,8 @@ class YouCompleteMe( object ):
 
 
   def OnFileReadyToParse( self ):
+    self._profile_buffer_parse.enable()
+
     if not self.IsServerAlive():
       self._NotifyUserIfServerCrashed()
       return
@@ -315,6 +326,8 @@ class YouCompleteMe( object ):
                                                           extra_data )
     self._latest_file_parse_request.Start()
 
+    self._profile_buffer_parse.disable()
+
 
   def OnBufferUnload( self, deleted_buffer_file ):
     if not self.IsServerAlive():
@@ -324,11 +337,13 @@ class YouCompleteMe( object ):
 
 
   def OnBufferVisit( self ):
+    self._profile_buffer_visit.enable()
     if not self.IsServerAlive():
       return
     extra_data = {}
     self._AddUltiSnipsDataIfNeeded( extra_data )
     SendEventNotificationAsync( 'BufferVisit', extra_data )
+    self._profile_buffer_visit.disable()
 
 
   def OnInsertLeave( self ):
@@ -605,6 +620,32 @@ class YouCompleteMe( object ):
       debug_info += '\nServer logfiles:\n  {0}\n  {1}'.format(
         self._server_stdout,
         self._server_stderr )
+
+    s = StringIO.StringIO()
+    sortby = 'cumulative'
+    ps = pstats.Stats(self._profile_get_completions, 
+                      stream=s).sort_stats(sortby)
+    ps.print_stats()
+    debug_info += "\nProfile (GetComptions):\n " + s.getvalue()
+
+    s = StringIO.StringIO()
+    sortby = 'cumulative'
+    ps = pstats.Stats(self._profile_create_completion_request, 
+                      stream=s).sort_stats(sortby)
+    ps.print_stats()
+    debug_info += "\nProfile (CreateCompletionRequest):\n " + s.getvalue()
+
+    s = StringIO.StringIO()
+    sortby = 'cumulative'
+    ps = pstats.Stats(self._profile_buffer_visit, stream=s).sort_stats(sortby)
+    ps.print_stats()
+    debug_info += "Profile (OnBufferVisit):\n " + s.getvalue()
+
+    s = StringIO.StringIO()
+    sortby = 'cumulative'
+    ps = pstats.Stats(self._profile_buffer_parse, stream=s).sort_stats(sortby)
+    ps.print_stats()
+    debug_info += "\nProfile (OnFileReadyToParse):\n " + s.getvalue()
 
     return debug_info
 
