@@ -121,6 +121,8 @@ class YouCompleteMe( object ):
     self._complete_done_hooks = {
       'cs': lambda self: self._OnCompleteDone_Csharp()
     }
+    self._last_buffer_visited = None
+    self._last_buffer_parsed = None
     self._profile_buffer_visit = cProfile.Profile()
     self._profile_buffer_parse = cProfile.Profile()
     self._profile_create_completion_request = cProfile.Profile()
@@ -308,11 +310,19 @@ class YouCompleteMe( object ):
              self.NativeFiletypeCompletionAvailable() )
 
 
-  def OnFileReadyToParse( self ):
+  def OnFileReadyToParse( self, buffer_did_change ):
     self._profile_buffer_parse.enable()
+    if not self.IsServerAlive():
+      return
 
     if not self.IsServerAlive():
       self._NotifyUserIfServerCrashed()
+      return
+
+    # Similarly to OnBufferVisit, we only process this event if the file we
+    # last parsed actually changed.
+    file_path = vimsupport.GetCurrentBufferFilepath()
+    if buffer_did_change and self._last_buffer_parsed == file_path:
       return
 
     self._omnicomp.OnFileReadyToParse( None )
@@ -325,6 +335,8 @@ class YouCompleteMe( object ):
     self._latest_file_parse_request = EventNotification( 'FileReadyToParse',
                                                           extra_data )
     self._latest_file_parse_request.Start()
+
+    self._last_buffer_parsed = file_path
 
     self._profile_buffer_parse.disable()
 
@@ -340,9 +352,28 @@ class YouCompleteMe( object ):
     self._profile_buffer_visit.enable()
     if not self.IsServerAlive():
       return
+
+    # Only fire this event if we've actually changed the buffer we're seeing.
+    # Note that we often jump between the preview window and a real buffer,
+    # particularly when the pop-up menu is visible.
+    # To prevent mand calls to UltiSnips and to SendEventNotificationAsync
+    # (which involves packaging up all of the open buffers) when the PUM is
+    # visible, we only fire this event when the filename actually changes.
+    # Note also that this event only fires in buffers in which completion is
+    # enabled, so we don't get called for the preview window, and thus a simple
+    # check on "last file visited" is enough.
+    
+    file_path = vimsupport.GetCurrentBufferFilepath()
+    if self._last_buffer_visited == file_path:
+      return
+    
+    # so we only track files for which YCM is enabled
+    
     extra_data = {}
     self._AddUltiSnipsDataIfNeeded( extra_data )
     SendEventNotificationAsync( 'BufferVisit', extra_data )
+    self._last_buffer_visited = file_path
+
     self._profile_buffer_visit.disable()
 
 

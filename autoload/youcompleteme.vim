@@ -457,7 +457,7 @@ function! s:OnBufferRead()
   endif
 
   exec s:python_command "ycm_state.OnBufferVisit()"
-  call s:OnFileReadyToParse()
+  call s:OnFileReadyToParse( 1 )
 endfunction
 
 
@@ -487,11 +487,11 @@ function! s:OnCursorHold()
   endif
 
   call s:SetUpCompleteopt()
-  call s:OnFileReadyToParse()
+  call s:OnFileReadyToParse( 0 )
 endfunction
 
 
-function! s:OnFileReadyToParse()
+function! s:OnFileReadyToParse( buffer_did_change )
   " We need to call this just in case there is no b:ycm_changetick; this can
   " happen for special buffers.
   call s:SetUpYcmChangedTick()
@@ -504,7 +504,9 @@ function! s:OnFileReadyToParse()
 
   let buffer_changed = b:changedtick != b:ycm_changedtick.file_ready_to_parse
   if buffer_changed
-    exec s:python_command "ycm_state.OnFileReadyToParse()"
+    exec s:python_command "ycm_state.OnFileReadyToParse( " 
+          \ . a:buffer_did_change
+          \ . ")"
   endif
   let b:ycm_changedtick.file_ready_to_parse = b:changedtick
 endfunction
@@ -562,7 +564,7 @@ function! s:OnCursorMovedNormalMode()
     return
   endif
 
-  call s:OnFileReadyToParse()
+  call s:OnFileReadyToParse( 0 )
   exec s:python_command "ycm_state.OnCursorMoved()"
 endfunction
 
@@ -573,7 +575,7 @@ function! s:OnInsertLeave()
   endif
 
   let s:omnifunc_mode = 0
-  call s:OnFileReadyToParse()
+  call s:OnFileReadyToParse( 0 )
   exec s:python_command "ycm_state.OnInsertLeave()"
   if g:ycm_autoclose_preview_window_after_completion ||
         \ g:ycm_autoclose_preview_window_after_insertion
@@ -827,7 +829,7 @@ function! s:ForceCompile()
   endif
 
   echom "Forcing compilation, this will block Vim until done."
-  exec s:python_command "ycm_state.OnFileReadyToParse()"
+  exec s:python_command "ycm_state.OnFileReadyToParse( False )"
   exec s:python_command "ycm_state.HandleFileParseRequest( True )"
 
   return 1
