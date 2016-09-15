@@ -51,7 +51,10 @@ from ycm.client.event_notification import ( SendEventNotificationAsync,
                                             EventNotification )
 from ycm.client.shutdown_request import SendShutdownRequest
 
-import cProfile, pstats, StringIO
+import cProfile, pstats
+from io import StringIO
+
+ENABLE_PROFILE = False
 
 def PatchNoProxy():
   current_value = os.environ.get('no_proxy', '')
@@ -665,31 +668,37 @@ class YouCompleteMe( object ):
         self._server_stdout,
         self._server_stderr )
 
-    s = StringIO.StringIO()
-    sortby = 'cumulative'
-    ps = pstats.Stats(self._profile_get_completions, 
-                      stream=s).sort_stats(sortby)
-    ps.print_stats()
-    debug_info += "\nProfile (GetComptions):\n " + s.getvalue()
+    if ENABLE_PROFILE:
+      try:
+        s = StringIO.StringIO()
+        sortby = 'cumulative'
+        ps = pstats.Stats(self._profile_get_completions, 
+                          stream=s).sort_stats(sortby)
+        ps.print_stats()
+        debug_info += "\nProfile (GetComptions):\n " + s.getvalue()
 
-    s = StringIO.StringIO()
-    sortby = 'cumulative'
-    ps = pstats.Stats(self._profile_create_completion_request, 
-                      stream=s).sort_stats(sortby)
-    ps.print_stats()
-    debug_info += "\nProfile (CreateCompletionRequest):\n " + s.getvalue()
+        s = StringIO.StringIO()
+        sortby = 'cumulative'
+        ps = pstats.Stats(self._profile_create_completion_request, 
+                          stream=s).sort_stats(sortby)
+        ps.print_stats()
+        debug_info += "\nProfile (CreateCompletionRequest):\n " + s.getvalue()
 
-    s = StringIO.StringIO()
-    sortby = 'cumulative'
-    ps = pstats.Stats(self._profile_buffer_visit, stream=s).sort_stats(sortby)
-    ps.print_stats()
-    debug_info += "Profile (OnBufferVisit):\n " + s.getvalue()
+        s = StringIO.StringIO()
+        sortby = 'cumulative'
+        ps = pstats.Stats(self._profile_buffer_visit,
+                          stream=s).sort_stats(sortby)
+        ps.print_stats()
+        debug_info += "Profile (OnBufferVisit):\n " + s.getvalue()
 
-    s = StringIO.StringIO()
-    sortby = 'cumulative'
-    ps = pstats.Stats(self._profile_buffer_parse, stream=s).sort_stats(sortby)
-    ps.print_stats()
-    debug_info += "\nProfile (OnFileReadyToParse):\n " + s.getvalue()
+        s = StringIO.StringIO()
+        sortby = 'cumulative'
+        ps = pstats.Stats(self._profile_buffer_parse,
+                          stream=s).sort_stats(sortby)
+        ps.print_stats()
+        debug_info += "\nProfile (OnFileReadyToParse):\n " + s.getvalue()
+      except:
+        pass
 
     return debug_info
 

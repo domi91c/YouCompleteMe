@@ -31,7 +31,8 @@ from ycm.client.base_request import ( BaseRequest, JsonFromFuture,
                                       MakeServerException )
 from ycmd.responses import ServerError
 
-TIMEOUT_SECONDS = 0.5
+# Here at Fidessa, some stuff like filesystem access is just really slow
+TIMEOUT_SECONDS = 1.5
 
 
 class CompletionRequest( BaseRequest ):

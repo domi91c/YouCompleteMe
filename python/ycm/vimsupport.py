@@ -20,6 +20,7 @@ from __future__ import print_function
 from __future__ import division
 from __future__ import absolute_import
 from future import standard_library
+from future.utils import PY2
 standard_library.install_aliases()
 from builtins import *  # noqa
 
@@ -123,13 +124,30 @@ def GetUnsavedAndCurrentBufferData():
              buffer_object == vim.current.buffer ):
       continue
 
-    buffers_data[ GetBufferFilepath( buffer_object ) ] = {
-      # Add a newline to match what gets saved to disk. See #1455 for details.
+    # Running ToUnicode() on each line in the vim buffer object causes big
+    # slowdown on large files. So instead, we roll our own approach here. 
+    #
+    # Vim only talks about buffers in terms of individual lines. There is no
+    # simple way to get the entire buffer contents with line breaks (which is
+    # what we want here). So we must use the line-by-line approach.
+    # 
+    # We know that Vim will return whatever the Python-version-native string 
+    # type is. i.e. for our futurized perspective:
+    #  - PY2: bytes() instance
+    #  - PY3: str() instance
+    #
+    # Add a newline to match what gets saved to disk. See #1455 for details.
+    if PY2:
+      native_newline = bytes( b'\n' )
+      file_contents = native_newline.join( buffer_object ) + native_newline
+    else:
+      file_contents = '\n'.join( buffer_object ) + '\n'
 
-      # TODO: This ToUnicode on each line in the buffer causes big performance
-      # problems
-      'contents': '\n'.join( x for x in buffer_object ) + '\n',
-      'filetypes': FiletypesForBuffer( buffer_object )
+    buffers_data[ GetBufferFilepath( buffer_object ) ] = {
+      # TODO: This conversion to unicode is super slow, but means that we get
+      # errors when the file contains non-ascii characters.
+      'contents': ToUnicode( file_contents ),
+      'filetypes': FiletypesForBuffer( buffer_object ),
     }
 
   return buffers_data

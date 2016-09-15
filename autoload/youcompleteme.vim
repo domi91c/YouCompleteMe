@@ -467,7 +467,7 @@ function! s:OnBufferEnter()
   endif
 
   exec s:python_command "ycm_state.OnBufferVisit()"
-  call s:OnFileReadyToParse()
+  call s:OnFileReadyToParse( 1 )
 endfunction
 
 
