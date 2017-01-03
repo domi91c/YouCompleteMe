@@ -411,6 +411,8 @@ function! s:SetUpCompleteopt()
   " don't need to insert the prefix; they just type the differentiating chars.
   " Also, having this option set breaks the plugin.
   set completeopt-=longest
+  set completeopt+=noselect
+  set completeopt+=noinsert
 
   if g:ycm_add_preview_to_completeopt
     set completeopt+=preview
@@ -705,13 +707,11 @@ function! s:InvokeCompletion()
   endif
 
   " <c-x><c-u> invokes the user's completion function (which we have set to
-  " youcompleteme#Complete), and <c-p> tells Vim to select the previous
-  " completion candidate. This is necessary because by default, Vim selects the
-  " first candidate when completion is invoked, and selecting a candidate
-  " automatically replaces the current text with it. Calling <c-p> forces Vim to
-  " deselect the first candidate and in turn preserve the user's current text
-  " until he explicitly chooses to replace it with a completion.
-  call feedkeys( "\<C-X>\<C-U>\<C-P>", 'n' )
+  " youcompleteme#Complete). Note that when we enabled YCM, we added 'noinsert'
+  " and 'noselect' to 'completeopt'. This prevents Vim from selecting or
+  " inserting the first match (and allows us to use complete_check() within the
+  " 'findstart' call).
+  call feedkeys( "\<C-X>\<C-U>", 'n' )
 endfunction
 
 
@@ -744,7 +744,7 @@ function! youcompleteme#Complete( findstart, base )
       return -2
     endif
     exec s:python_command "ycm_state.CreateCompletionRequest()"
-    return s:Pyeval( 'base.CompletionStartColumn()' )
+    return s:Pyeval( 'ycm_state.GetCompletionStartColumn()' )
   else
     return s:GetCompletions()
   endif
@@ -759,7 +759,7 @@ function! youcompleteme#OmniComplete( findstart, base )
     let s:omnifunc_mode = 1
     exec s:python_command "ycm_state.CreateCompletionRequest(" .
           \ "force_semantic = True )"
-    return s:Pyeval( 'base.CompletionStartColumn()' )
+    return s:Pyeval( 'ycm_state.GetCompletionStartColumn()' )
   else
     return s:GetCompletions()
   endif

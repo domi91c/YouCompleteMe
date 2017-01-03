@@ -271,6 +271,7 @@ class YouCompleteMe( object ):
       if self._omnicomp.ShouldUseNow( wrapped_request_data ):
         self._latest_completion_request = OmniCompletionRequest(
             self._omnicomp, wrapped_request_data )
+        self._latest_completion_request.Start()
         return self._latest_completion_request
 
     request_data[ 'working_dir' ] = utils.GetCurrentDirectory()
@@ -279,12 +280,21 @@ class YouCompleteMe( object ):
     if force_semantic:
       request_data[ 'force_semantic' ] = True
     self._latest_completion_request = CompletionRequest( request_data )
+    self._latest_completion_request.Start()
     return self._latest_completion_request
+
+
+  def GetCompletionStartColumn( self ):
+    request = self.GetCurrentCompletionRequest()
+    while not request.Done():
+      if vimsupport.GetBoolValue( 'complete_check()' ):
+        return base.CompletionStartColumn()
+
+    return request.RawResponse()[ 'completion_start_column' ] - 1
 
 
   def GetCompletions( self ):
     request = self.GetCurrentCompletionRequest()
-    request.Start()
     while not request.Done():
       try:
         if vimsupport.GetBoolValue( 'complete_check()' ):

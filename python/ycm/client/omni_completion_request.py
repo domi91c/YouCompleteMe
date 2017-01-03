@@ -30,6 +30,7 @@ class OmniCompletionRequest( CompletionRequest ):
   def __init__( self, omni_completer, request_data ):
     super( OmniCompletionRequest, self ).__init__( request_data )
     self._omni_completer = omni_completer
+    self._results = None
 
 
   def Start( self ):
@@ -41,7 +42,11 @@ class OmniCompletionRequest( CompletionRequest ):
 
 
   def RawResponse( self ):
-    return _ConvertVimDatasToCompletionDatas( self._results )
+    return {
+      'completions': _ConvertVimDatasToCompletionDatas( self._results ) ,
+      'completion_start_column': self.request_data[ 'start_column' ],
+      'errors': []
+    }
 
 
   def Response( self ):

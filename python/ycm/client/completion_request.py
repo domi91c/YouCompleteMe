@@ -59,12 +59,13 @@ class CompletionRequest( BaseRequest ):
         with HandleServerException( truncate = True ):
           raise MakeServerException( e )
 
-      return response[ 'completions' ]
+      return response
     return []
 
 
   def Response( self ):
-    return _ConvertCompletionDatasToVimDatas( self.RawResponse() )
+    return _ConvertCompletionDatasToVimDatas(
+      self.RawResponse()[ 'completions' ])
 
 
 def ConvertCompletionDataToVimData( completion_data ):
